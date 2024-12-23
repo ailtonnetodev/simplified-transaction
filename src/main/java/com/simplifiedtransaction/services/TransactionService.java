@@ -2,18 +2,14 @@ package com.simplifiedtransaction.services;
 
 import com.simplifiedtransaction.domain.transaction.Transaction;
 import com.simplifiedtransaction.domain.user.User;
-import com.simplifiedtransaction.dtos.NotificationDTO;
 import com.simplifiedtransaction.dtos.TransactionDTO;
 import com.simplifiedtransaction.repositories.TransactionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
-import java.math.BigDecimal;
+
+
 import java.time.LocalDateTime;
-import java.util.Map;
 
 @Service
 public class TransactionService {
@@ -25,7 +21,7 @@ public class TransactionService {
     private TransactionRepository repository;
 
     @Autowired
-    private RestTemplate restTemplate;
+    private AuthorizeTransaction authService;
 
     @Autowired
     private NotificationService notificationService;
@@ -36,10 +32,10 @@ public class TransactionService {
 
         userService.validateTransaction(sender, transaction.value());
 
-//        boolean isAuthorized = this.authorizeTransaction(sender, transaction.value());
-//        if(!isAuthorized) {
-//            throw new Exception("Transação Não Autorizada!");
-//        }
+        boolean isAuthorized = this.authService.authorizeTransaction(sender, transaction.value());
+        if(!isAuthorized) {
+            throw new Exception("Transação Não Autorizada!");
+        }
 
         Transaction newTransaction = new Transaction();
         newTransaction.setAmount(transaction.value());
@@ -59,14 +55,5 @@ public class TransactionService {
         this.notificationService.sendNotification(receiver, "Transação recebida com Sucesso.");
 
         return newTransaction;
-    }
-
-    public boolean authorizeTransaction(User sender, BigDecimal value){
-        ResponseEntity<Map> authorizationResponse = restTemplate.getForEntity("https://util.devi.tools/api/v2/authorize", Map.class);
-
-        if(authorizationResponse.getStatusCode() == HttpStatus.OK){
-            String message = (String) authorizationResponse.getBody().get("message");
-            return "Autorizado".equalsIgnoreCase(message);
-        } else return false;
     }
 }
